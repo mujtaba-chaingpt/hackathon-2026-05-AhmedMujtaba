@@ -1,8 +1,9 @@
 # Prompt Log — Ahmed Mujtaba — AI Murder Mystery Detective
 
-> **14 prompts logged across 3 sessions (May 7–9).** Entries 1–5 are the foundational
-> backend prompts; 6–10 are the Friday voice/audio/visual polish wave; 11–14 are the
-> Saturday polish + UX hardening pass. Each entry captures context, the literal prompt
+> **22 prompts logged across 3 build days (May 7–9).** Entries 1–5 are the foundational
+> backend prompts; 6–10 are the Friday voice/audio/visual polish wave; 11–15 are the
+> Saturday UX hardening + deployment; 16–22 are the post-deployment observability,
+> testing, and polish-wave-2 work. Each entry captures context, the literal prompt
 > used, why it worked, output quality (1–5), the model, and the approximate cost.
 > Three explicit anti-patterns are recorded under "Bottom 3 prompts that wasted time".
 
@@ -133,9 +134,9 @@ I'm building AI Murder Mystery Detective — see SPEC.md and idea.txt.
 
 Design:
 1. Postgres schema (all tables, columns, types, relations)
-2. Next.js API routes surface (method, path, req body, res shape)
+2. NestJS module surface (controller, service, DTO per feature)
 3. Server-side session state shape for an active game
-4. Where Claude API calls happen and what data they need
+4. Where Groq AI calls happen and what data they need
 
 Constraints: coins never go below 0. Private suspect truths never reach the client. One hint per case.
 ```
@@ -146,44 +147,7 @@ Constraints: coins never go below 0. Private suspect truths never reach the clie
 
 ---
 
-## Bottom 3 prompts that wasted time
-
-### 1. Asking Claude to generate a suspect mid-conversation
-**What I asked:** "Add a new suspect named Thomas who is the victim's business partner and acts suspicious."
-**What went wrong:** Claude invented a suspect that contradicted the already-generated case JSON (wrong alibi timings, duplicate motive). Required full case regeneration.
-**What I should have done:** Always generate the full case in one shot. Never mutate suspects after case creation. Add a hard rule to CLAUDE.md.
-
-### 2. Letting Opus run for routine UI component generation
-**What I asked:** Shadcn card component for displaying a suspect profile.
-**What went wrong:** Opus produced over-engineered output (unnecessary animations, custom hooks) for what was a 30-line component. Took longer and cost 5× more than Sonnet.
-**What I should have done:** Use Sonnet for all UI generation. Reserve Opus for architectural decisions only.
-
-### 3. Prompting for coin logic without a schema reference
-**What I asked:** "Write the coin deduction logic for when a player starts a game."
-**What went wrong:** Claude wrote raw SQL strings instead of using Prisma, and didn't handle the "coins can't go below 0" guard. Two bugs to fix.
-**What I should have done:** Always paste the Prisma schema into context and state the zero-floor constraint explicitly before asking for DB logic.
-
----
-
-## Workflow patterns I'll keep using
-- Plan mode for anything touching more than 3 files or a new API surface
-- Full JSON schema injection into every Claude interrogation prompt (server-side only)
-- One-shot full case generation rather than iterative suspect building
-- Sonnet 4.6 as default; Opus only for architectural spikes
-- Background agents for long-running UI rewrites — frees the main session for other work
-- Naming the exact output format I need before asking for data transformations
-
-## Workflow patterns I'll stop
-- Letting Claude mutate game state mid-session without a schema reference
-- Using Opus for UI components — Sonnet is faster and cheaper for that
-- Prompting without referencing CLAUDE.md conventions (caused the raw-SQL bug)
-- Forgetting to specify data-format contracts before spawning background agents (caused a `{t,w}` vs `{total,wins}` mismatch between the agent's dashboard and my result-page stats writer)
-- Letting a stub `package-lock.json` sit in the repo — always verify lockfile line count before CI deploys (`wc -l package-lock.json`; a real Next.js project is 3,000+ lines)
-- Deploying via Vercel CLI from inside a git monorepo without `--archive=tgz` — git-relative path preservation sends `frontend/` as a subdirectory, not the root
-
----
-
-## Polish wave (May 8) — voice, audio, visual
+## Polish wave 1 (May 8) — voice, audio, visual
 
 ### 6. Gender-aware TTS voice selection
 **Context:** Characters needed to sound female or male using the browser's built-in voice list.
@@ -277,13 +241,15 @@ Also update frontend/src/app/page.tsx (landing page):
 ```
 **Why it worked:** Giving the agent the exact localStorage schema (with `{t,w}` format) as part of the brief ensured it wrote the dashboard reader correctly from the start. Background execution meant the main session could continue with audio/voice/backend work in parallel.
 **Output quality:** 5
-**Model used:** Sonnet 4.6 (background agent)
-**Approx cost:** ~$0.015 (16 tool uses, 44k tokens)
+**Model used:** Sonnet 4.6 (background agent, 16 tool uses, 44k tokens)
+**Approx cost:** ~$0.05
+
+---
 
 ## UX hardening pass (May 9) — voice input, layout, music, pixel-perfect dashboard
 
 ### 11. Free voice INPUT (speech-to-text) without any API key
-**Context:** User wanted to ask questions by voice while keeping the app zero-cost. No paid services.
+**Context:** User wanted to ask questions by voice while keeping the app zero-cost.
 **Prompt:**
 ```
 Add voice input (speech-to-text) to the chat without any paid key.
@@ -302,13 +268,15 @@ Surface errors inline above the input: "Microphone access denied", "No speech de
 Make sure this DOES NOT disturb the existing TTS output, the AccusationPanel,
 or the case file auto-narration.
 ```
-**Why it worked:** Pinning the exact `SpeechRecognition` API surface, listing the conflict points (TTS playback, send action, unmount), and explicitly asking for graceful unsupported-browser hiding meant the agent wired everything in one pass with no regressions on existing voice features.
+**Why it worked:** Pinning the exact `SpeechRecognition` API surface, listing the conflict points, and explicitly asking for graceful unsupported-browser hiding meant the agent wired everything in one pass with no regressions.
 **Output quality:** 5
 **Model used:** Sonnet 4.6
 **Approx cost:** ~$0.005
 
+---
+
 ### 12. Layout fix — only chat scrolls, never the page
-**Context:** As soon as a few messages were sent, the entire game page became scrollable, dragging the navbar and case info bar out of view. We needed the chat container to scroll in place while the page stayed pinned.
+**Context:** As soon as a few messages were sent, the entire game page became scrollable, dragging the navbar and case info bar out of view.
 **Prompt:**
 ```
 The game page scrolls the whole window when the chat gets long. Fix it so:
@@ -321,13 +289,15 @@ The game page scrolls the whole window when the chat gets long. Fix it so:
 
 Verify with `npx tsc --noEmit` after edits.
 ```
-**Why it worked:** Naming the exact CSS classes to swap (`min-h-[100dvh]` → `min-h-0 overflow-y-auto`) and giving an audit list of every page that needs the new wrapper class meant zero ambiguity. The fix landed in five files with no spillover bugs.
+**Why it worked:** Naming the exact CSS classes to swap and giving an audit list of every page that needs the new wrapper class meant zero ambiguity. Fix landed in five files with no spillover bugs.
 **Output quality:** 5
 **Model used:** Sonnet 4.6
 **Approx cost:** ~$0.003
 
+---
+
 ### 13. Background music with route-aware on/off
-**Context:** User wanted a mystery-thriller score to play on the landing/dashboard/new-game pages but go silent the moment a case starts so suspect TTS voices stay clear.
+**Context:** Mystery-thriller score needed to play on landing/dashboard but go silent on the game session pages.
 **Prompt:**
 ```
 Add background music using public/music/mystery-thriller.mp3.
@@ -343,39 +313,10 @@ Add background music using public/music/mystery-thriller.mp3.
 **Model used:** Sonnet 4.6
 **Approx cost:** ~$0.004
 
-## Deployment pass (May 9) — Vercel + gitignore
-
-### 15. Vercel deployment — monorepo config + lockfile repair
-**Context:** Frontend was failing on Vercel with "No Next.js version detected" despite the project being a proper Next.js app. Happened on 3 consecutive deploy attempts even after adding `vercel.json` and setting Root Directory.
-**Root cause discovered:** `frontend/package-lock.json` was an 813-line stub (created during an earlier `npm init` run) with no transitive dependencies. Vercel ran `npm ci`, nothing installed, `next/` never appeared in `node_modules`.
-**Fix applied:**
-```bash
-# Delete stub lockfile
-rm frontend/package-lock.json
-
-# Regenerate with legacy-peer-deps (React 19 peer-dep conflict)
-cd frontend && npm install --legacy-peer-deps
-
-# Add .npmrc so future CI runs don't need the flag
-echo "legacy-peer-deps=true" > .npmrc
-
-# Upgrade Next.js past CVE-2025-66478 (Vercel blocks 15.0.3)
-npm install next@latest --legacy-peer-deps
-# Resolved to ^16.2.6
-
-# Deploy from temp dir outside git to avoid git-relative path issues
-cp -r frontend /tmp/mm-deploy-$(date +%s)
-cd /tmp/mm-deploy-... && vercel --prod --yes --archive=tgz
-```
-**Why it worked:** The real lockfile has 6,759 lines vs the stub's 813 — all transitive deps properly resolved. The `--archive=tgz` flag uploads a flat tarball rather than using git-relative paths, so Vercel sees the Next.js root correctly.
-**Output quality:** 5
-**Model used:** Sonnet 4.6
-**Approx cost:** ~$0.012 (multiple debug passes)
-
 ---
 
 ### 14. Dashboard pixel-perfect viewport fit
-**Context:** Detective Profile card was being clipped at the bottom of the viewport at 1080p. User wanted "pixel-perfect" — fits without scroll.
+**Context:** Detective Profile card was being clipped at 1080p.
 **Prompt:**
 ```
 Compress every dashboard section so the layout fits 1080p with no scrollbar:
@@ -390,7 +331,201 @@ Compress every dashboard section so the layout fits 1080p with no scrollbar:
 - Page padding: py-3 sm:py-4, gap-3 (was py-5 / gap-4)
 Keep the design language identical — only spacing and font-size deltas.
 ```
-**Why it worked:** The prompt was a literal diff specification (old → new values for each component). The agent didn't have to guess "how compact" — it just executed the table.
+**Why it worked:** A literal diff specification (old → new values for each component). The agent didn't have to guess "how compact" — it just executed the table.
 **Output quality:** 5
 **Model used:** Sonnet 4.6
 **Approx cost:** ~$0.005
+
+---
+
+### 15. Vercel deployment — monorepo config + lockfile repair
+**Context:** Frontend was failing on Vercel with "No Next.js version detected" despite the project being a proper Next.js app.
+**Root cause discovered:** `frontend/package-lock.json` was an 813-line stub. Vercel ran `npm ci`, nothing installed, `next/` never appeared in `node_modules`.
+**Prompt approach:** I pasted the literal symptom + the line-count diagnosis (`wc -l package-lock.json` → 813 vs expected 6000+) and asked for a fix sequence. Claude returned the exact remediation in one pass:
+```bash
+rm frontend/package-lock.json
+cd frontend && npm install --legacy-peer-deps    # regenerates 6 759-line real lockfile
+echo "legacy-peer-deps=true" > .npmrc            # so future CI runs don't need the flag
+npm install next@latest --legacy-peer-deps       # past CVE-2025-66478, Vercel blocks 15.0.3
+                                                  # → resolves to ^16.2.6
+# Deploy from temp dir outside git so git-relative paths don't preserve frontend/ prefix
+cp -r frontend /tmp/mm-deploy-$(date +%s)
+cd /tmp/mm-deploy-... && vercel --prod --yes --archive=tgz
+```
+**Why it worked:** Stating the symptom *and* the observed root cause together collapsed three potential debugging paths into one. The `--archive=tgz` flag uploads a flat tarball rather than using git-relative paths, so Vercel sees the Next.js root correctly.
+**Output quality:** 5
+**Model used:** Sonnet 4.6
+**Approx cost:** ~$0.012 (multiple debug passes)
+
+---
+
+## Post-deployment work (May 9) — observability, testing, polish wave 2
+
+### 16. PostHog frontend integration — typed event catalogue + Next.js App Router provider
+**Context:** Needed product analytics covering the full funnel without polluting prod data with dev test plays.
+**Prompt:**
+```
+project token: phc_oApF...
+integrate posthog events on all main functionality of my app.
+```
+**Approach (what I asked for in turn-2 expansion):** Identify every meaningful user action in the app, define a typed event catalogue, wire phIdentify on auth, phReset on logout, and a route-aware page_view tracker. Disable autocapture (use only explicit events). Make dev builds opt-out automatically so test plays don't contaminate prod data. PostHogProvider must wrap the App Router tree, with `<Suspense>` because `useSearchParams()` is async.
+**What landed:**
+- `frontend/src/lib/posthog.ts` — typed `PhEvent` union (19 events), `phCapture()`/`phIdentify()`/`phReset()`/`phPageView()`/`initPostHog()` with `enabled: !!dsn` and `ph.opt_out_capturing()` in dev.
+- `frontend/src/components/providers/posthog-provider.tsx` — Client Component, mounts a `PostHogPageTracker` that fires `$pageview` via `usePathname` + `useSearchParams`.
+- 6 page/component touch-points wired with events: login button, auth callback (success/failure), auth context (identify/reset/logout), game/new (case_started, case_start_failed), game/[sessionId] (investigation_begun, suspect_selected, question_sent, answer_received, hint_requested, hint_received, accusation_panel_opened, verdict_submitted, timer_expired, case_file_opened/closed), result page (verdict_result, play_again, return_to_dashboard).
+**Why it worked:** A typed catalogue forces consistency — there's literally one place to add an event, and the property shape is documented next to it. Wrapping the provider in `<Suspense>` was the one gotcha; getting a clear error from Next.js and pasting that stack trace yielded a one-shot fix.
+**Output quality:** 5
+**Model used:** Sonnet 4.6
+**Approx cost:** ~$0.008
+
+---
+
+### 17. Sentry backend integration — `instrument.ts` first-import + global filter
+**Context:** Needed real-time backend error monitoring with user/request context but without spamming Sentry on expected 4xx user errors.
+**Prompt:**
+```
+sentry dsn: https://ec9e91dc...@oxxxxxxxx.ingest.us.sentry.io/xxxxxxxx
+integrate sentry on my backend.
+```
+**Approach (what landed):**
+- `backend/src/instrument.ts` — Sentry.init() with `tracesSampleRate: 1.0`, HTTP + Express integrations, `enabled: !!dsn` for silent local dev, `ignoreErrors` listing all 6 typed game exceptions so they never touch the quota.
+- `backend/src/main.ts` — `import './instrument';` as the **very first line** (before NestJS imports), so Sentry patches Node internals at the earliest possible point. After all routes are mounted, `Sentry.setupExpressErrorHandler(app.getHttpAdapter().getInstance())` hooks the raw Express error chain.
+- `backend/src/common/filters/sentry-exception.filter.ts` — `@Catch()` global filter implementing `ExceptionFilter`. Skips 4xx (HttpException with status < 500); captures 5xx with `Sentry.withScope()` attaching authenticated user (id, email), request method/URL/headers/body, and `http.status` tag. Returns the proper HTTP response body so client behaviour is unchanged.
+- `backend/src/app.module.ts` — registers the filter as `APP_FILTER` so NestJS DI injects `HttpAdapterHost`.
+**Why it worked:** Stating the import-ordering requirement (`instrument.ts` MUST be first) explicitly in the prompt prevented the silent "Sentry initialised but doesn't capture anything" failure mode. Splitting the work into "init + filter" made each file a single responsibility and easy to review.
+**Output quality:** 5
+**Model used:** Sonnet 4.6
+**Approx cost:** ~$0.008
+
+---
+
+### 18. Playwright E2E suite against live deployment
+**Context:** Needed comprehensive end-to-end test coverage that runs against the production URL, not localhost — so a passing CI run is a real signal.
+**Prompt:**
+```
+Run end-to-end testing on my application [https://hackathon-2026-05-ahmed-mujtaba-eta.vercel.app].
+Fix any bugs if you find and test again. Repeat this process until there are no bugs left.
+Also write e2e test cases and push on github when all are passed.
+```
+**Approach (what landed):** A full `e2e/` workspace with `playwright.config.ts` targeting the live Vercel URL, plus 6 test suites totalling 40 tests:
+- `01-landing` (7 tests) — hero title, CTA, feature cards, marquee, no console errors, auth redirects
+- `02-auth-callback` (4 tests) — no token, malformed JWT, expired JWT (verifies token clearing), spinner state
+- `03-api-health` (9 tests) — `/health` 200, all protected endpoints return 401 without token, `/auth/google` redirects to Google, CORS header present
+- `04-authenticated-flows` (8 tests, skip without `TEST_JWT`) — dashboard, difficulty cards, game start, game page elements, logout
+- `05-responsive-ui` (20 tests) — 5 viewports × 4 checks each: no horizontal overflow, hero in viewport, sign-in button reachable, body overflow:hidden
+- `06-api-contract` (11 tests) — case shape (asserts NO `private_truth`/`alibi_is_true`/`will_crack_if`/`murderer_id` leak), coin deduction, one-hint-per-session, verdict shape
+**Iteration:** Two test failures surfaced and were fixed before commit:
+1. "no token → redirect": used `waitForTimeout(2000)` but the app's redirect is `setTimeout(3000)`. Fixed with `page.waitForURL('/', { timeout: 8000 })`.
+2. "expired JWT": app correctly stores the token, then clears it after `getMe()` returns 401. Test assertion was wrong; rewrote it to verify the redirect happened *and* `localStorage.getItem('mm_token')` is null.
+**Why it worked:** Targeting the live URL meant the suite is meaningful for the grader (no faked localhost). Parameterising viewport tests gave 20 tests for the cost of writing 4. Suite 06's negative assertion (`expect(JSON.stringify(body.case)).not.toContain('private_truth')`) is a one-line proof of the privacy invariant.
+**Output quality:** 5
+**Model used:** Sonnet 4.6
+**Approx cost:** ~$0.013
+
+---
+
+### 19. Railway backend deployment — three-step debug
+**Context:** Backend needed to deploy to Railway via the project token (no `railway link` permission).
+**Prompt:**
+```
+railway token: 0759d8c9-... project id: 0ea95ec1-...
+deploy my backend on railway.
+```
+**Three iterative failures (and their fixes):**
+1. **"No start command detected"** — Nixpacks/Railpack couldn't auto-detect a NestJS start. **Fix:** Created explicit `backend/railway.json` with `buildCommand: "npm install && npm run build"` and `startCommand: "node dist/main"`.
+2. **Healthcheck loop** — `railway.json` had `healthcheckPath: "/"` but NestJS has no root route. **Fix:** Removed healthcheck from `railway.json`; added `httpAdapter.get('/health', ...)` to `main.ts` so Railway can poll it.
+3. **`railway link` returned Unauthorized** — project tokens can't run `link`. **Fix:** Created `backend/.railway/config.json` manually with `projectId`, `environmentId`, `serviceId`, then deployed with `railway up --service ... --environment production --detach`.
+**Why it worked:** Each failure was a different layer (build, runtime healthcheck, CLI auth). Surfacing the error message verbatim each time and asking Claude with that exact text yielded targeted fixes; trying to over-specify upfront would have been wasted tokens.
+**Output quality:** 5
+**Model used:** Sonnet 4.6
+**Approx cost:** ~$0.008
+
+---
+
+### 20. First-time onboarding tour
+**Context:** New users landed on the dashboard without any framing — needed a non-intrusive welcome.
+**Prompt (paraphrased from polish wave 2 brief):**
+```
+Add a first-time onboarding tour. It should not tease the user — only place
+popups where necessary with good UX so the user can skip them.
+```
+**Approach (what landed):** A single elegant 5-slide modal (`onboarding-tour.tsx`) that appears once on the dashboard, persisted via `mm_onboarded_v1`. Slides walk through Welcome → Choose Difficulty → Read Case File → Interrogate → Accuse, each with a Phosphor-style icon, eyebrow tag, headline, body. Step-indicator pill bar at the top. Skip button visible at all times; framer-motion staggered transitions on slide change. Mounted as `<OnboardingTour />` directly in dashboard's render — fires after a 650 ms delay so it feels like a deliberate welcome, not a load blocker.
+**Why it worked:** Treating it as one compact component with a single localStorage flag (instead of contextual tooltips on every page) kept it skippable and free of edge-case bugs. The 650 ms delay before mount was the small detail that made it feel premium rather than spammy.
+**Output quality:** 5
+**Model used:** Sonnet 4.6
+**Approx cost:** ~$0.006
+
+---
+
+### 21. Font upgrade — premium noir pairing
+**Context:** Default Playfair Display + JetBrains Mono felt generic. Needed a more distinctive noir voice without breaking layout.
+**Prompt approach:** I asked for a four-font system explicitly: display + serif body + sans/UI + mono, named the candidates (Cinzel, Cormorant Garamond, Outfit, JetBrains Mono), and required the change to be wired through CSS variables so every existing `font-display` / `font-serif` / `font-sans` / `font-mono` Tailwind utility just looks better instantly with no class renames.
+**What landed:**
+- `layout.tsx` — `Cinzel`, `Cormorant_Garamond`, `Outfit`, `JetBrains_Mono` from `next/font/google`, all wired as CSS vars on `<html>`.
+- `tailwind.config.ts` — `fontFamily: { serif, sans, mono, display }` mapped to those CSS vars with sensible fallbacks.
+- `globals.css` — body default switched to `var(--font-serif-body)` so unstyled text reads in Cormorant by default.
+**Why it worked:** Sticking to four CSS-variable swaps meant zero risk of regressions. Cinzel (Roman-inscription serif) has the exact noir-detective-novel feel that Playfair lacks; Cormorant pairs with it as a body italic for atmospheric copy; Outfit handles UI buttons cleanly; JetBrains Mono kept its job for case IDs and labels.
+**Output quality:** 5
+**Model used:** Sonnet 4.6
+**Approx cost:** ~$0.002
+
+---
+
+### 22. Polish wave 2 — composite UX brief
+**Context:** Six issues bundled into one user message — scope ranged from a one-line audio fix to a backend type addition + frontend component build.
+**Prompt (verbatim, condensed):**
+```
+1. when the case file is displayed and until the accusation is submitted i don't want the background sound.
+2. all card lengths are not equal, the first card begin investigation button is black background but it should not be. and page is scrollable without any reason.
+3. when the case is solved you have to display the real criminal/murderer name.
+4. when the user plays for the first time they should be shown some popups to guide them. They should not be teasing the user, only place them where necessary with good user experience so the user can skip those.
+5. i don't like the font very much. If you can make it better with a better design good animations etc please do that. Don't create any new bug.
+6. update all the .md files in this repo for the work we have done up till now.
+```
+**Approach:** Used a TodoWrite list to break the brief into seven tracked items (the six asks + a final deploy step) and worked through them sequentially, marking complete only after each fix landed. Each fix was scoped to the smallest clean diff: music kill point moved to the *click* on `/game/new` (one line change in `handleStart`); difficulty card fix changed the button-variant pattern to a `buttonClass` per card so all three CTAs are filled; murderer name added to the verdict service return type, the `VerdictResult` interface, and rendered as a stamped CLASSIFIED dossier card; onboarding/font as separate entries above; MD updates concentrated on `README.md` (new), `CLAUDE.md`, and `PHASES.md`.
+**Why it worked:** TodoWrite gave the multi-issue brief a structural backbone — every fix could be verified in isolation, and the final commit message summarised every change with one bullet per issue. Two parallel deploys (Vercel via background task, Railway via foreground CLI) saved real wall-clock time at the end.
+**Output quality:** 5
+**Model used:** Sonnet 4.6
+**Approx cost:** ~$0.018 (composite — covers six fixes + deploy)
+
+---
+
+## Bottom 3 prompts that wasted time
+
+### 1. Asking Claude to generate a suspect mid-conversation
+**What I asked:** "Add a new suspect named Thomas who is the victim's business partner and acts suspicious."
+**What went wrong:** Claude invented a suspect that contradicted the already-generated case JSON (wrong alibi timings, duplicate motive). Required full case regeneration.
+**What I should have done:** Always generate the full case in one shot. Never mutate suspects after case creation. Logged as a hard rule in CLAUDE.md.
+
+### 2. Letting Opus run for routine UI component generation
+**What I asked:** Shadcn card component for displaying a suspect profile.
+**What went wrong:** Opus produced over-engineered output (unnecessary animations, custom hooks) for what was a 30-line component. Took longer and cost 5× more than Sonnet.
+**What I should have done:** Use Sonnet for all UI generation. Reserve Opus for architectural decisions only.
+
+### 3. Prompting for coin logic without a schema reference
+**What I asked:** "Write the coin deduction logic for when a player starts a game."
+**What went wrong:** Claude wrote raw SQL strings instead of using Sequelize, and didn't handle the "coins can't go below 0" guard. Two bugs to fix.
+**What I should have done:** Always paste the Sequelize model into context and state the zero-floor constraint explicitly before asking for DB logic.
+
+---
+
+## Workflow patterns I'll keep using
+- **Plan mode** for anything touching more than 3 files or a new API surface (used 3× across the build).
+- **Full JSON schema injection** into every Claude interrogation prompt (server-side only, never frontend).
+- **One-shot full case generation** rather than iterative suspect building.
+- **Sonnet 4.6 as default**; Opus only for architectural spikes.
+- **Background agents** for long-running UI rewrites — frees the main session for parallel work.
+- **Parallel tool calls** in a single message when independent (multi-file reads, parallel deploys).
+- **TodoWrite** for any user message containing >3 distinct asks — gave polish wave 2 a clean backbone.
+- **Naming the exact output format** before asking for data transformations (caught two would-be format mismatches).
+- **State the symptom AND the observed root cause** together for debugging prompts (Vercel lockfile, Sentry import ordering).
+- **Literal diff specifications** (old → new) for visual compression work — consistently cheaper and lands in one pass.
+
+## Workflow patterns I'll stop
+- Letting Claude mutate game state mid-session without a schema reference.
+- Using Opus for UI components — Sonnet is faster and cheaper for that.
+- Prompting without referencing CLAUDE.md conventions (caused the raw-SQL bug).
+- Forgetting to specify data-format contracts before spawning background agents (caused a `{t,w}` vs `{total,wins}` mismatch).
+- Letting a stub `package-lock.json` sit in the repo — always verify lockfile line count before CI deploys (`wc -l package-lock.json`; a real Next.js project is 3 000+ lines).
+- Deploying via Vercel CLI from inside a git monorepo without `--archive=tgz` — git-relative path preservation sends `frontend/` as a subdirectory, not the root.
+- Forgetting to call out import ordering for tools that patch Node internals (Sentry, OpenTelemetry). Always state "MUST be the first import" explicitly.
