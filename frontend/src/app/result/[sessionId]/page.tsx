@@ -162,7 +162,7 @@ export default function ResultPage() {
   if (authLoading || !user) return <FullPageSpinner />;
   if (!result) return <FullPageSpinner />;
 
-  const { correct, reveal, coinBalance, coinsEarned } = result;
+  const { correct, reveal, coinBalance, coinsEarned, murdererName, accusedName } = result;
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-y-auto relative">
@@ -235,6 +235,68 @@ export default function ResultPage() {
               ? 'Your deduction was correct. Justice is served tonight.'
               : 'The truth eluded you. The killer walks free into the darkness.'}
           </motion.p>
+        </motion.div>
+
+        {/* Murderer reveal — always shown, regardless of correct/incorrect.
+            Designed as a "case file dossier" with a stamped CONFIDENTIAL header
+            so the actual answer is unmistakable. */}
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ delay: 0.55, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="relative aged-paper rounded-2xl p-6 sm:p-7 overflow-hidden"
+        >
+          {/* CONFIDENTIAL stamp watermark */}
+          <div
+            className="absolute -top-1 right-3 sm:right-5 select-none pointer-events-none"
+            style={{ transform: 'rotate(-6deg)' }}
+            aria-hidden="true"
+          >
+            <span className="font-mono text-[9px] sm:text-[10px] tracking-[0.4em] text-danger/40 border-2 border-danger/30 px-2 py-0.5 rounded-sm uppercase">
+              Classified
+            </span>
+          </div>
+
+          <p className="font-mono text-[10px] sm:text-[11px] tracking-[0.45em] uppercase text-accent/55 mb-3">
+            ◆ Case File &mdash; Murderer Identified
+          </p>
+
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <span className="font-mono text-[11px] sm:text-xs tracking-[0.3em] uppercase text-muted/70">
+              The killer was
+            </span>
+            <motion.span
+              initial={{ opacity: 0, filter: 'blur(8px)' }}
+              animate={{ opacity: 1, filter: 'blur(0px)' }}
+              transition={{ delay: 0.95, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              className="font-display text-2xl sm:text-3xl md:text-4xl font-black tracking-wide text-danger-bright glow-crimson"
+            >
+              {murdererName}
+            </motion.span>
+          </div>
+
+          {/* Show what the player guessed if it was wrong */}
+          {!correct && accusedName && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.3, duration: 0.5 }}
+              className="font-serif text-foreground-dim italic text-sm mt-3"
+            >
+              You accused <span className="text-foreground/85 font-semibold not-italic">{accusedName}</span>.
+              The real culprit slipped through your fingers.
+            </motion.p>
+          )}
+          {correct && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.3, duration: 0.5 }}
+              className="font-serif text-foreground-dim italic text-sm mt-3"
+            >
+              Your accusation was correct. The case is closed.
+            </motion.p>
+          )}
         </motion.div>
 
         {/* Coin delta */}

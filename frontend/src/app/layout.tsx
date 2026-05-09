@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import type { Metadata } from 'next';
-import { Playfair_Display, JetBrains_Mono } from 'next/font/google';
+import { Cinzel, Cormorant_Garamond, Outfit, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 import { AudioProvider } from '@/lib/audio-context';
@@ -8,12 +8,33 @@ import { PostHogProvider } from '@/components/providers/posthog-provider';
 import { Header } from '@/components/layout/header';
 import NoirBackground from '@/components/ui/noir-background';
 
-const playfair = Playfair_Display({
+// ── Typography pairing ──────────────────────────────────────────────────────
+// Display: Cinzel — Roman-inscription serif, perfect for noir title cards
+const cinzel = Cinzel({
   subsets: ['latin'],
-  variable: '--font-playfair',
+  variable: '--font-display',
   display: 'swap',
+  weight: ['400', '500', '600', '700', '800', '900'],
 });
 
+// Body serif: Cormorant Garamond — elegant editorial body, gorgeous italics
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  variable: '--font-serif-body',
+  display: 'swap',
+  weight: ['300', '400', '500', '600', '700'],
+  style: ['normal', 'italic'],
+});
+
+// Sans / UI: Outfit — premium modern grotesk for buttons and UI
+const outfit = Outfit({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
+});
+
+// Mono: JetBrains Mono — case IDs and technical labels (kept)
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-jetbrains',
@@ -32,7 +53,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${playfair.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${cinzel.variable} ${cormorant.variable} ${outfit.variable} ${jetbrainsMono.variable}`}>
       <body className="bg-background text-foreground font-serif h-[100dvh] flex flex-col overflow-hidden">
         {/* ── Animated canvas background ── */}
         <NoirBackground />

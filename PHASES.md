@@ -14,6 +14,7 @@ Each phase has its own document under `phases/` with: **goal → plan → done �
 | 6 | Integration testing & QA | DONE | [phases/PHASE_6_qa.md](phases/PHASE_6_qa.md) |
 | 7 | Polish, animations, demo prep | DONE | [phases/PHASE_7_polish.md](phases/PHASE_7_polish.md) |
 | 8 | Deployment — Vercel + Railway + Postgres | DONE | [phases/PHASE_8_deployment.md](phases/PHASE_8_deployment.md) |
+| 9 | Polish wave 2 — onboarding, fonts, observability, layout fixes | DONE | (this doc, see "Polish wave 2" below) |
 
 ## Polish work completed (Phase 7 highlights — May 8)
 
@@ -38,6 +39,19 @@ Each phase has its own document under `phases/` with: **goal → plan → done �
 | Layout architecture: body fixed to `h-[100dvh]` so only inner scrollers scroll (chat scrolls in-place; page never scrolls) | DONE |
 | Background music (`mystery-thriller.mp3`) plays on landing / dashboard / `/game/new`; auto-stops on `/game/[sessionId]`; mute button pauses/resumes | DONE |
 | Dashboard pixel-perfect compression — fits in single viewport at 1080p without scrollbar (compact Hero, tight padding, horizontal Detective Badge, smaller stat tile numerals) | DONE |
+
+## Polish wave 2 — May 9 (post-deployment)
+
+| Feature | Status |
+|---------|--------|
+| Background music silenced the moment the user clicks "Begin Investigation" (covers the cinematic generation overlay and the entire game session, not just `/game/[sessionId]`) | DONE |
+| Difficulty cards: equal-height grid with `items-stretch`, all three CTAs use a fully-filled accent button (was outline for Easy), tighter padding (`p-5` from `p-6`), header + balance moved into a single row on desktop, `lg:overflow-hidden` so the page fits on a 720p laptop | DONE |
+| Verdict reveal: backend `submitVerdict()` now returns `murdererName`, `murdererId`, `accusedName`. Result page renders a stamped *Classified* dossier card showing the actual killer regardless of win/lose, with a contextual subtitle differing by outcome | DONE |
+| First-time onboarding tour: `components/onboarding/onboarding-tour.tsx` — 5-slide modal with step indicator, framer-motion staggered transitions, fully skippable, persisted via `mm_onboarded_v1` localStorage key, mounted on `/dashboard` | DONE |
+| Font upgrade: Cinzel (display, Roman-inscription serif) + Cormorant Garamond (serif body, elegant editorial) + Outfit (sans/UI) + JetBrains Mono (mono kept). Wired in `layout.tsx` and `tailwind.config.ts` via CSS variables | DONE |
+| PostHog analytics: 19 typed events, `phIdentify`/`phReset`, autocapture off, dev opt-out, route-aware page_view via Suspense-wrapped provider | DONE |
+| Sentry error monitoring (backend): `instrument.ts` first-import, global `SentryExceptionFilter` with 4xx skip + 5xx scope (user, request, body, http.status), Express error handler hooked, `SENTRY_DSN` set on Railway | DONE |
+| README.md created at repo root — judge-friendly project overview with architecture diagram, tech stack table, quick start, invariants, observability notes | DONE |
 
 ## How to use this
 

@@ -32,6 +32,9 @@ export class VerdictService {
     reveal: string;
     coinBalance: number;
     coinsEarned: number;
+    murdererName: string;
+    murdererId: string;
+    accusedName: string;
   }> {
     const { sessionId, accusedSuspectId } = dto;
 
@@ -116,11 +119,22 @@ export class VerdictService {
       finalBalance = await this.coinService.getBalance(userId);
     }
 
+    // Always reveal the actual murderer's identity in the response so the result page
+    // can show it explicitly (separate from the AI-generated narrative reveal).
+    const murderer = caseData.suspects?.find(
+      (s: any) => s.id === caseData.murderer_id,
+    );
+    const murdererName = murderer?.name ?? 'Unknown';
+    const murdererId = caseData.murderer_id ?? '';
+
     return {
       correct,
       reveal,
       coinBalance: finalBalance,
       coinsEarned,
+      murdererName,
+      murdererId,
+      accusedName,
     };
   }
 }

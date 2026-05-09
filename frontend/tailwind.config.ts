@@ -34,9 +34,14 @@ const config: Config = {
         smoke: '#1a1a24',
       },
       fontFamily: {
-        serif: ['var(--font-playfair)', 'Georgia', 'Cambria', '"Times New Roman"', 'serif'],
-        mono: ['var(--font-jetbrains)', '"Courier New"', 'Courier', 'monospace'],
-        display: ['var(--font-playfair)', 'Georgia', 'serif'],
+        // Serif body — Cormorant Garamond, elegant editorial feel for narrative copy
+        serif: ['var(--font-serif-body)', 'Cormorant Garamond', 'Georgia', 'Cambria', 'serif'],
+        // Sans / UI — Outfit, premium grotesk for buttons and modern UI elements
+        sans: ['var(--font-sans)', 'Outfit', 'system-ui', 'sans-serif'],
+        // Mono — JetBrains Mono, technical labels and case IDs
+        mono: ['var(--font-jetbrains)', '"JetBrains Mono"', '"Courier New"', 'monospace'],
+        // Display — Cinzel, dramatic Roman serif for the headline noir feel
+        display: ['var(--font-display)', 'Cinzel', 'Georgia', 'serif'],
       },
       backgroundImage: {
         'noir-radial': 'radial-gradient(ellipse at center, #0d0d1a 0%, #060608 70%)',

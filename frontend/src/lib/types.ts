@@ -71,6 +71,12 @@ export interface VerdictResult {
   reveal: string;
   coinBalance: number;
   coinsEarned: number;
+  /** Name of the actual murderer — always returned, regardless of correct/incorrect verdict. */
+  murdererName: string;
+  /** Suspect ID of the actual murderer. */
+  murdererId: string;
+  /** Name of whoever the player accused (or '' if the timer expired). */
+  accusedName: string;
 }
 
 export type Difficulty = 'easy' | 'medium' | 'hard';

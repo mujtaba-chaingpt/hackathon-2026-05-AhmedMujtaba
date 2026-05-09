@@ -9,8 +9,11 @@
 - Auth: Google OAuth — handled by backend; JWT issued to frontend
 - AI: Groq — model `llama-3.3-70b-versatile` (groq-sdk)
 - UI: Tailwind CSS v3 + shadcn/ui (dark noir theme, CSS vars in `globals.css`)
-- Audio: Web Audio API (procedural SFX + thunder); Web Speech API (TTS narration)
+- Fonts: **Cinzel** (display, `--font-display`), **Cormorant Garamond** (serif body, `--font-serif-body`), **Outfit** (sans/UI, `--font-sans`), **JetBrains Mono** (mono, `--font-jetbrains`) — wired in `frontend/src/app/layout.tsx` and consumed via Tailwind `font-display` / `font-serif` / `font-sans` / `font-mono` utilities
+- Audio: Web Audio API (procedural SFX + thunder); Web Speech API (TTS narration + voice INPUT)
 - Animations: framer-motion (AnimatePresence, spring physics, stagger)
+- Analytics: PostHog (frontend `posthog-js`, 19 typed events via `lib/posthog.ts`)
+- Errors: Sentry (`@sentry/node` on backend, global `SentryExceptionFilter` capturing 5xx only)
 - Deploy: Vercel (frontend) + Railway (backend)
 - E2E Tests: Playwright 1.59 (`e2e/` directory, 40 tests across 6 suites)
 
@@ -119,11 +122,21 @@ backend/
 
 ## Voice / audio architecture
 - **Ambient audio** (`audio.ts` + `audio-context.tsx`): Web Audio API engine. `startAmbient()` warms up the AudioContext only — no rain or wind layers. Thunder is canvas-synced: `NoirBackground` calls `playThunderClap()` (exported from `audio.ts`) 0.8–3.5 s after each lightning flash.
-- **Background music** (`audio-context.tsx` → `frontend/public/music/mystery-thriller.mp3`): a looping HTMLAudioElement managed by `AudioProvider`. Plays on the landing / dashboard / `/game/new` pages. Volume hardcoded at `0.32` so it never overpowers TTS or SFX. **Stopped on mount** of `/game/[sessionId]` (alongside ambient) so suspect voices stay clearly audible, and **resumed on unmount** when the user returns to the dashboard or result page. The mute button in the header also pauses/resumes music. Browsers block autoplay until first user interaction — `AudioProvider` waits for the first `click`/`keydown` then starts both ambient and music; `play()` rejections are silently swallowed.
+- **Background music** (`audio-context.tsx` → `frontend/public/music/mystery-thriller.mp3`): a looping HTMLAudioElement managed by `AudioProvider`. Plays on the landing / dashboard pages. Volume hardcoded at `0.32` so it never overpowers TTS or SFX. **Stopped at the moment the user clicks "Begin Investigation" on `/game/new`** (`stopMusic()` + `stopAmbient()` fire alongside `phCapture('case_started')` *before* navigation) — this covers the cinematic generation overlay and persists silence through the entire game session (case file → interrogation → verdict). Music resumes on unmount of `/game/[sessionId]` when the player returns to the dashboard or result page. The mute button in the header also pauses/resumes music. Browsers block autoplay until first user interaction — `AudioProvider` waits for the first `click`/`keydown` then starts both ambient and music; `play()` rejections are silently swallowed.
 - **SFX** (`audio.ts`): click, hover, send, receive, coin, win, lose, timerWarning — all procedurally generated, played through master gain node.
 - **TTS output** (`tts.ts`): Web Speech API. `getCharacterVoice(name, role, gender?)` selects gender-specific browser voices (`getBestFemaleVoice()` / `getBestMaleVoice()`) and applies deterministic pitch/rate from a djb2 hash of the character's name. Volume is hardcoded at 1.0. The game page mutes ambient (`stopAmbient()`) so TTS is always clearly audible.
 - **Case file auto-narration**: `CaseFileBook` auto-fires `handleReadAll()` ~900 ms after mount (lets Firefox load voices). The `mm_case_file_autoplay` localStorage key (`'1'` default, `'0'` to opt out) is toggled from the file's top bar via the `Auto` button. The `Stop` button still mutes the current playback without changing the persistent preference.
 - **Voice INPUT (speech-to-text)** (`interrogation-chat.tsx`): browser-native `window.SpeechRecognition` / `webkitSpeechRecognition` (no API key, no server cost). Mic button next to the chat input transcribes speech into the input field as the user speaks. Hidden on browsers without API support (e.g. Firefox). Auto-stops on send, on unmount, and when TTS playback starts to avoid feedback. Errors surface as a small crimson hint above the input (`'Microphone access denied'`, `'No speech detected'`, …).
+
+## First-time onboarding
+- `frontend/src/components/onboarding/onboarding-tour.tsx` — 5-slide modal that mounts on `/dashboard`. Persisted via `mm_onboarded_v1` localStorage key (set to `'1'` on either Skip or completion). Slides cover: Welcome → Choose difficulty → Read case file → Interrogate suspects → Make accusation. Each slide has its own icon, eyebrow tag, headline and body. Uses framer-motion for staggered transitions and a step-indicator pill bar at the top.
+
+## Verdict reveal
+- `submitVerdict()` (backend) returns `murdererName`, `murdererId`, and `accusedName` alongside `correct`, `reveal`, `coinBalance`, `coinsEarned`. The frontend `result/[sessionId]/page.tsx` uses these to render a stamped *Classified* dossier card showing the actual murderer's name **regardless of win/lose**, plus a contextual line ("You accused X. The real culprit slipped through your fingers." on a loss).
+
+## Analytics & error monitoring
+- **PostHog** (`frontend/src/lib/posthog.ts` + `components/providers/posthog-provider.tsx`): typed event catalogue with 19 events covering the whole funnel. Identity set via `phIdentify(user.id, …)` on session load, reset on logout. Autocapture disabled — only explicit events. Dev builds opt out via `ph.opt_out_capturing()` so test plays don't pollute prod data. Page view fires on every route change via `usePathname` + `useSearchParams`.
+- **Sentry** (`backend/src/instrument.ts` + `common/filters/sentry-exception.filter.ts`): `instrument.ts` MUST be the first import in `main.ts` (Sentry patches Node internals before NestJS loads). Global `SentryExceptionFilter` registered as `APP_FILTER` skips 4xx (user errors), captures 5xx with full request + user scope. `enabled: !!dsn` means local dev with no DSN is silent.
 
 ## Layout / scrolling architecture
 - **`<body>` is fixed-height** (`h-[100dvh] overflow-hidden flex flex-col`) — the page itself never scrolls.

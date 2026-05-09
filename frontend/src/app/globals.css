@@ -26,7 +26,11 @@ html {
 body {
   background-color: #060608;
   color: #ede6d6;
-  font-family: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif;
+  /* Default body font: Cormorant Garamond (serif body) — Tailwind `font-serif`
+     and `font-display` utilities still work via CSS vars. */
+  font-family: var(--font-serif-body), 'Cormorant Garamond', Georgia, serif;
+  font-size: 16px;
+  font-weight: 400;
   /* height is controlled by Tailwind h-[100dvh] on the body element in layout.tsx */
   /* overflow is controlled by Tailwind overflow-hidden to prevent body scroll */
 }
