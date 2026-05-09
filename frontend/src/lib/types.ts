@@ -110,7 +110,7 @@ export const DIFFICULTY_INFO: Record<Difficulty, DifficultyInfo> = {
   hard: {
     label: 'HARD',
     coins: 200,
-    reward: 200,
+    reward: 600,
     description: '6 suspects. Red herrings. 55 minutes.',
     suspects: '6 suspects',
     time: '55 minutes',

@@ -1,4 +1,6 @@
-// Diverse settings pool — AI is instructed to pick from these and vary them.
+// Diverse settings pool — AI is instructed to use the chosen setting verbatim.
+// Expanded substantially (24 → 48) so two cases in a row hitting the same
+// setting becomes statistically rare.
 const SETTINGS = [
   'a Victorian country manor during a weekend hunting party',
   'a luxury cruise ship in the Mediterranean',
@@ -24,11 +26,66 @@ const SETTINGS = [
   'a mountain observatory staffed by rival astronomers',
   'a literary festival at a coastal manor',
   'a luxury train crossing through Switzerland',
+  // ── Expanded pool — added May 9 to combat sampler repetition ──
+  'a research vessel anchored above a deep-sea trench in the South Pacific',
+  'a Bollywood film set on the Mumbai waterfront the night before the wrap party',
+  'a fashion atelier in Milan two days before couture week',
+  'an isolated lighthouse station off the coast of Newfoundland',
+  'a colonial-era tea plantation in Sri Lanka during monsoon',
+  'a private chess tournament in a monastery in Bhutan',
+  'a perfumer’s estate in Grasse during the rose harvest',
+  'an oil rig in the North Sea during a maintenance lockdown',
+  'a horse breeding farm in Kentucky on Derby week',
+  'a high-end forensic accounting retreat in the Cotswolds',
+  'a private balloon expedition launching from the Atacama Desert',
+  'a recording studio in Memphis during an album-release session',
+  'a Japanese ryokan hot-spring inn deep in the Hakone mountains',
+  'an antique automobile auction house the night before a record sale',
+  'a Norwegian fjord cabin retreat for a family inheritance reading',
+  'a private space-tech investor summit in a desert observatory',
+  'a Moroccan riad during the wedding of a powerful merchant family',
+  'a Catalan modernist mansion hosting an architecture symposium',
+  'a private island science research station off the Galápagos',
+  'a Russian dacha during a midwinter chess masters retreat',
+  'a vintage rail museum hosting an overnight charity gala',
+  'a Buenos Aires tango academy during a competitive showcase',
+  'a high-altitude climbing base camp on a Himalayan peak',
+  'a hidden speakeasy beneath a Manhattan brownstone the night of a charity poker game',
 ];
 
-// Pick a pseudo-random setting each call so cases stay diverse.
+// Cause-of-death seeds — used to push the sampler away from "blunt force trauma"
+// being the modal answer.
+const DEATH_SEEDS = [
+  'staged accident — supposed fall from a height',
+  'rare poison disguised in a beverage or food',
+  'gas-line tampering made to look like a malfunction',
+  'electrocution from rigged equipment',
+  'asphyxiation in a sealed room',
+  'firearm wound staged as a suicide',
+  'sharp instrument from the scene itself (not the obvious weapon)',
+  'hypothermia after being locked outside',
+  'overdose of a victim\'s own medication',
+  'industrial accident on the property — staged',
+  'drowning in unexpected water (bath, cellar, tank)',
+  'crush injury from machinery, set up to look mechanical',
+];
+
+// Pick a pseudo-random setting + seeds each call.
 function pickSetting(): string {
   return SETTINGS[Math.floor(Math.random() * SETTINGS.length)];
+}
+function pickDeathSeed(): string {
+  return DEATH_SEEDS[Math.floor(Math.random() * DEATH_SEEDS.length)];
+}
+
+// Random "casefile token" — opaque entropy injected into the prompt so the
+// model's prefix-cache cannot return the same generation when called twice
+// with structurally identical inputs.
+function entropyToken(): string {
+  // 16 hex chars + a millisecond timestamp segment.
+  const rnd = Math.random().toString(16).slice(2, 10);
+  const rnd2 = Math.random().toString(16).slice(2, 10);
+  return `${rnd}-${rnd2}-${Date.now().toString(16)}`;
 }
 
 export function buildCaseGenerationPrompt(difficulty: string): string {
@@ -61,19 +118,31 @@ export function buildCaseGenerationPrompt(difficulty: string): string {
 
   const rules = difficultyRules[difficulty] || difficultyRules['medium'];
   const setting = pickSetting();
+  const deathSeed = pickDeathSeed();
+  const token = entropyToken();
 
   return `You are a master crime fiction author creating a murder mystery case for a detective game.
 
+CASEFILE SEED: ${token}
+(This token is unique to this case — use it as creative entropy. Do NOT include it in the output.)
+
 SETTING FOR THIS CASE: ${setting}
+
+CAUSE-OF-DEATH SEED (use this as the basis, not the literal phrase): ${deathSeed}
 
 ${rules}
 
 DIVERSITY RULES (CRITICAL — follow every one of these):
-1. The setting above is fixed for this case — use it as the primary location.
-2. Character names must be diverse, non-generic, and culturally varied. No "John Smith" or "Jane Doe". Draw names from different ethnicities and cultures (e.g., Karim Osei, Ines Varela, Priya Nair, Dmitri Volkov, Yuki Tanaka).
-3. The victim's background must be rich and give multiple people motive.
-4. Every suspect must have a distinct, memorable personality that feels like a real person.
-5. No two cases should ever have the same victim name, profession, or murder method.
+1. The setting above is fixed for this case — use it as the primary location. Embed at least three location-specific details (objects, traditions, professions) that could only exist in THIS setting.
+2. Character names must be diverse, non-generic, and culturally varied. No "John Smith" or "Jane Doe". Draw names from different ethnicities and cultures (e.g., Karim Osei, Ines Varela, Priya Nair, Dmitri Volkov, Yuki Tanaka, Solène Marchetti, Rohan Mehra, Adaeze Eze).
+3. Names must be from at least 3 different cultural backgrounds across the suspect+witness cast.
+4. The victim's background must be rich and give multiple people motive.
+5. Every suspect must have a distinct, memorable personality that feels like a real person (no two "nervous" personalities; no two "cold" personalities).
+6. Cause of death and method must derive from the seed above — do NOT default to "blunt force trauma" or "stab wound" unless the seed says so.
+7. The crime_scene_description must reference at least two physical objects unique to the chosen setting.
+8. Murder method should be specific to this setting — what's available, what's plausible, what's atmospheric.
+9. Avoid clichés: no missing wills, no twins, no unannounced long-lost relatives unless the setting demands it.
+10. NEVER reuse the names "Eleanor Whitcombe", "Lord Ashford", "Maria Chen", or "Marcus Bell" — these have appeared in past cases.
 
 Generate a complete, internally consistent murder mystery case. Every suspect, clue, and piece of evidence must fit together logically.
 

@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useAudio } from '@/lib/audio-context';
 import { api } from '@/lib/api';
 import { phCapture } from '@/lib/posthog';
+import { stop as stopTTS } from '@/lib/tts';
 import type { GameSession, Suspect, Witness, Character, InterrogationMessage } from '@/lib/types';
 import { FullPageSpinner } from '@/components/ui/spinner';
 import { CountdownTimer } from '@/components/game/countdown-timer';
@@ -102,13 +103,30 @@ export default function GamePage() {
       .finally(() => setSessionLoading(false));
   }, [sessionId, router]);
 
-  // Handle "Begin Investigation" from the book — starts the timer
-  const handleBeginInvestigation = useCallback(() => {
+  // Handle "Begin Investigation" from the book — starts the timer.
+  // Now calls the backend to reset `expiresAt` so reading time doesn't burn budget.
+  const handleBeginInvestigation = useCallback(async () => {
     if (!session) return;
+
+    // Stop any in-flight case-file narration. The user is moving on to gameplay —
+    // they shouldn't keep hearing the briefing in the background.
+    stopTTS();
+
     setShowCaseBook(false);
+
     if (!timerStarted) {
-      setTimerStarted(true);
-      setTimerExpiresAt(session.expiresAt);
+      try {
+        // Backend resets expiresAt = now + difficulty_ms. Idempotent on retries.
+        const { expiresAt } = await api.beginTimer(sessionId);
+        setTimerStarted(true);
+        setTimerExpiresAt(expiresAt);
+      } catch {
+        // If the begin call fails for any reason, fall back to the session's
+        // original expiresAt so the player isn't blocked. Worst case: they
+        // play with the original budget that was set at case creation.
+        setTimerStarted(true);
+        setTimerExpiresAt(session.expiresAt);
+      }
       phCapture('investigation_begun', {
         session_id: sessionId,
         difficulty: session.difficulty,

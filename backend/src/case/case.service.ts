@@ -91,6 +91,56 @@ export class CaseService {
     };
   }
 
+  /**
+   * Start the countdown timer. Called when the player clicks "Begin Investigation"
+   * inside the case file book — NOT at case creation. This way the time spent
+   * reading the case file does not eat into the playable budget.
+   *
+   * Resets `expiresAt` to `now + difficulty_ms`. Idempotent: if the timer has
+   * already been started recently, calling again just returns the current state
+   * without resetting (prevents extending the timer by re-clicking).
+   */
+  async beginTimer(
+    sessionId: string,
+    userId: string,
+  ): Promise<{ sessionId: string; expiresAt: Date }> {
+    const session = await this.gameSessionModel.findOne({
+      where: { id: sessionId, userId },
+    });
+
+    if (!session) throw new SessionNotFoundError();
+    if (session.status !== 'active') throw new SessionNotActiveError();
+
+    const now = new Date();
+
+    // Idempotency: at case creation, `startedAt` and `createdAt` are written
+    // together (within ~ms of each other). After beginTimer runs, `startedAt`
+    // is bumped to a much later time. Use a 5-second tolerance to detect
+    // "already begun" — re-clicking Begin Investigation must not extend the timer.
+    const TOLERANCE_MS = 5_000;
+    const createdAt = session.createdAt ?? session.startedAt;
+    const alreadyBegun =
+      session.startedAt &&
+      session.startedAt.getTime() > createdAt.getTime() + TOLERANCE_MS;
+
+    if (alreadyBegun) {
+      return { sessionId: session.id, expiresAt: session.expiresAt };
+    }
+
+    const difficultyMs = TIMERS_MS[session.difficulty] ?? TIMERS_MS['medium'];
+    const newExpiresAt = new Date(now.getTime() + difficultyMs);
+
+    session.expiresAt = newExpiresAt;
+    session.startedAt = now;
+    await session.save();
+
+    this.logger.log(
+      `Timer started for session ${sessionId} (${session.difficulty}) — expires at ${newExpiresAt.toISOString()}`,
+    );
+
+    return { sessionId: session.id, expiresAt: newExpiresAt };
+  }
+
   async getSession(
     sessionId: string,
     userId: string,

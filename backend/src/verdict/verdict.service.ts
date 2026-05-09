@@ -89,7 +89,12 @@ export class VerdictService {
       correct,
     );
 
-    const COIN_REWARDS: Record<string, number> = { easy: 150, medium: 300, hard: 200 };
+    // Each tier pays a flat 3× return on the wagered cost so Hard actually
+    // rewards the player for tackling the hardest case (was 200 — zero net profit).
+    //   easy:    50 wagered →  150 reward (+100 net)
+    //   medium: 100 wagered →  300 reward (+200 net)
+    //   hard:   200 wagered →  600 reward (+400 net)
+    const COIN_REWARDS: Record<string, number> = { easy: 150, medium: 300, hard: 600 };
     const coinsEarned = correct ? (COIN_REWARDS[session.difficulty] ?? session.coinCost * 2) : 0;
 
     // Update session and award coins in transaction

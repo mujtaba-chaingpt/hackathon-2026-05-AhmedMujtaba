@@ -522,29 +522,31 @@ export function CaseFileBook({ caseData, sessionId, difficulty, onBeginInvestiga
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Auto-start narration on first open (default ON; respects user pref) ──
+  // ── Auto-start narration (OPT-IN — default OFF) ──
+  // Auto-narration only fires when the user has explicitly opted in via the
+  // `Auto` toggle in the case file's top bar. Without an explicit opt-in,
+  // returning players get a quiet case file they can read at their own pace.
   const autoplayFiredRef = useRef(false);
   useEffect(() => {
     if (autoplayFiredRef.current) return;
     if (!tts.supported) return;
     let pref: string | null = null;
     try { pref = localStorage.getItem('mm_case_file_autoplay'); } catch {}
-    if (pref === '0') return; // user opted out previously
+    if (pref !== '1') return; // default OFF — only auto-narrate on explicit opt-in
     autoplayFiredRef.current = true;
     // Brief delay so voice list is loaded (esp. Firefox) and the user sees the cover
     const t = setTimeout(() => {
-      // handleReadAll uses a closure but its body just reads refs/pages — fine to call
       handleReadAll();
     }, 900);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tts.supported]);
 
-  // ── Toggle the autoplay preference (persisted) ──
+  // ── Toggle the autoplay preference (persisted, default OFF) ──
   const [autoplayPref, setAutoplayPref] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    try { return localStorage.getItem('mm_case_file_autoplay') !== '0'; }
-    catch { return true; }
+    if (typeof window === 'undefined') return false;
+    try { return localStorage.getItem('mm_case_file_autoplay') === '1'; }
+    catch { return false; }
   });
   const toggleAutoplay = useCallback(() => {
     setAutoplayPref((prev) => {

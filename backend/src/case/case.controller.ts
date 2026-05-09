@@ -24,6 +24,18 @@ export class CaseController {
     return this.caseService.startCase(user.id, dto);
   }
 
+  /**
+   * Player has finished reading the case file and is ready to start the timer.
+   * Resets `expiresAt` so reading time does not consume the playable budget.
+   */
+  @Post(':sessionId/begin')
+  async beginTimer(
+    @CurrentUser() user: { id: string; email: string },
+    @Param('sessionId') sessionId: string,
+  ) {
+    return this.caseService.beginTimer(sessionId, user.id);
+  }
+
   @Get(':sessionId')
   async getSession(
     @CurrentUser() user: { id: string; email: string },

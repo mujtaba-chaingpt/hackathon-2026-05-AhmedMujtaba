@@ -27,7 +27,12 @@ export class AiService {
     const completion = await this.groq.chat.completions.create({
       model: MODEL,
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.8,
+      // High temperature + top_p < 1 deliberately push the sampler away from
+      // its modal output (Groq llama 3.3 has noticeable repetition in case
+      // generation at the default 0.8). Combined with the random entropy seed
+      // injected into the prompt, this gives genuinely diverse cases.
+      temperature: 1.15,
+      top_p: 0.95,
       response_format: { type: 'json_object' },
     });
 
@@ -70,7 +75,10 @@ export class AiService {
     const completion = await this.groq.chat.completions.create({
       model: MODEL,
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
+      // Higher temperature so hint phrasing varies between sessions — players
+      // were noticing the same first-line opener case after case.
+      temperature: 1.0,
+      top_p: 0.95,
     });
 
     return completion.choices[0]?.message?.content?.trim() ?? '';

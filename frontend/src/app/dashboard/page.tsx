@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   Folder, Check, X as XIcon, TrendingUp, ArrowRight, Coins,
-  ShieldAlert, Award, Users, Clock, FileSearch, Skull,
+  ShieldAlert, Award, Users, Clock, FileSearch, Skull, Quote,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useAudio } from '@/lib/audio-context';
@@ -342,6 +342,85 @@ function DetectiveBadge({
   );
 }
 
+// ─── Detective's Notebook (bottom-right filler) ──────────────────────────────
+// Atmospheric rotating quote that gives the dashboard a finished, no-empty-space
+// feel. The quote rotates once per day (deterministic by date) so the dashboard
+// has a fresh detail each session without hitting the network.
+const NOTEBOOK_ENTRIES: { quote: string; attribution: string }[] = [
+  { quote: 'Every alibi is a story. Every story has the shape of the person telling it.', attribution: 'Field notes — third winter, ’47' },
+  { quote: 'The smallest contradiction is the loudest confession.', attribution: 'Inspector Solène Marchetti' },
+  { quote: 'A liar will tell you what they did. A killer will tell you what they didn’t do.', attribution: 'Detective L. Okafor' },
+  { quote: 'Listen for the silences. The truth is what they refuse to say twice.', attribution: 'From the casebook of M. Volkov' },
+  { quote: 'Motive isn’t a fact you find. It’s a shape you trace around the missing pieces.', attribution: 'Field notes — Karachi precinct' },
+  { quote: 'Three suspects, three lies, one truth. The truth is always the quietest of the four.', attribution: 'Unsigned — interrogation room six' },
+  { quote: 'A clean alibi is the loudest tell. Honest people remember badly.', attribution: 'Det. R. Tanaka, retired' },
+];
+
+function DetectivesNotebook() {
+  const today = new Date();
+  const idx =
+    (today.getFullYear() * 372 + today.getMonth() * 31 + today.getDate()) %
+    NOTEBOOK_ENTRIES.length;
+  const entry = NOTEBOOK_ENTRIES[idx];
+
+  return (
+    <motion.div
+      {...fadeUp(0.34)}
+      className="relative rounded-xl px-5 py-4 flex-1 min-h-0 flex flex-col justify-center overflow-hidden"
+      style={{
+        background:
+          'linear-gradient(160deg, rgba(22,18,12,0.95) 0%, rgba(12,10,8,0.95) 100%)',
+        border: '1px solid rgba(201,162,39,0.18)',
+        boxShadow: '0 6px 18px rgba(0,0,0,0.5), inset 0 1px 0 rgba(201,162,39,0.08)',
+      }}
+    >
+      {/* Decorative gold rule — top */}
+      <div
+        className="absolute top-0 left-5 right-5 h-px"
+        style={{ background: 'linear-gradient(to right, transparent, rgba(201,162,39,0.5), transparent)' }}
+      />
+
+      {/* Section header */}
+      <div className="flex items-center gap-2 mb-3">
+        <Quote size={14} style={{ color: '#e8c84a' }} />
+        <span className="font-mono text-[10px] tracking-[0.4em] uppercase" style={{ color: 'rgba(255,243,210,0.75)' }}>
+          Detective’s Notebook
+        </span>
+        <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, rgba(201,162,39,0.20), transparent)' }} />
+      </div>
+
+      {/* The pull quote — typographic centerpiece, no wasted space */}
+      <motion.blockquote
+        initial={{ opacity: 0, filter: 'blur(6px)' }}
+        animate={{ opacity: 1, filter: 'blur(0px)' }}
+        transition={{ duration: 0.7, delay: 0.42, ease: EASE }}
+        className="font-serif italic text-[15px] sm:text-[16px] leading-[1.55] mb-3"
+        style={{ color: 'rgba(255,243,210,0.85)' }}
+      >
+        <span style={{ color: '#e8c84a' }}>“</span>
+        {entry.quote}
+        <span style={{ color: '#e8c84a' }}>”</span>
+      </motion.blockquote>
+
+      {/* Attribution + dossier ID — keeps the visual weight balanced */}
+      <div className="flex items-center justify-between gap-3 pt-2 border-t" style={{ borderColor: 'rgba(201,162,39,0.15)' }}>
+        <p
+          className="font-mono text-[10px] tracking-[0.25em] uppercase"
+          style={{ color: 'rgba(232,200,74,0.65)' }}
+        >
+          — {entry.attribution}
+        </p>
+        <p
+          className="font-mono text-[9px] tracking-[0.3em] uppercase shrink-0"
+          style={{ color: 'rgba(255,243,210,0.35)' }}
+        >
+          Entry {String(idx + 1).padStart(2, '0')} / {NOTEBOOK_ENTRIES.length}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user, loading } = useAuth();
@@ -557,43 +636,45 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Investigation Protocol (compact, fills remaining) */}
+            {/* Investigation Protocol — text scaled up so it actually reads
+                as part of the dashboard rather than fine print. */}
             <motion.div
               {...fadeUp(0.28)}
-              className="rounded-xl px-4 py-3 flex-1 min-h-0"
+              className="rounded-xl px-5 py-4"
               style={{
                 background: 'linear-gradient(160deg, rgba(22,18,12,0.95) 0%, rgba(12,10,8,0.95) 100%)',
                 border: '1px solid rgba(201,162,39,0.18)',
                 boxShadow: '0 6px 18px rgba(0,0,0,0.5), inset 0 1px 0 rgba(201,162,39,0.08)',
               }}
             >
-              <div className="flex items-center gap-2 mb-2.5">
-                <FileSearch size={12} style={{ color: '#e8c84a' }} />
-                <span className="font-mono text-[9px] tracking-[0.4em] uppercase" style={{ color: 'rgba(255,243,210,0.7)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <FileSearch size={14} style={{ color: '#e8c84a' }} />
+                <span className="font-mono text-[10px] tracking-[0.4em] uppercase" style={{ color: 'rgba(255,243,210,0.75)' }}>
                   Investigation Protocol
                 </span>
+                <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, rgba(201,162,39,0.20), transparent)' }} />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
                 {STEPS.map((step, i) => (
                   <motion.div
                     key={step.n}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.4, delay: 0.30 + i * 0.05, ease: EASE }}
-                    className="flex items-start gap-2.5 py-1"
+                    className="flex items-start gap-3 py-1"
                   >
                     <span
-                      className="font-display text-[16px] font-black leading-none shrink-0 mt-0.5 tabular-nums"
-                      style={{ color: 'rgba(232,200,74,0.5)' }}
+                      className="font-display text-[22px] font-black leading-none shrink-0 mt-0.5 tabular-nums"
+                      style={{ color: 'rgba(232,200,74,0.55)' }}
                     >
                       {step.n}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="font-mono text-[9px] tracking-[0.25em] uppercase mb-0.5" style={{ color: '#e8c84a' }}>
+                      <p className="font-mono text-[10px] tracking-[0.3em] uppercase mb-1" style={{ color: '#e8c84a' }}>
                         {step.title}
                       </p>
-                      <p className="font-serif text-[11px] leading-snug" style={{ color: 'rgba(255,243,210,0.65)' }}>
+                      <p className="font-serif text-[13px] leading-relaxed" style={{ color: 'rgba(255,243,210,0.72)' }}>
                         {step.text}
                       </p>
                     </div>
@@ -601,6 +682,10 @@ export default function DashboardPage() {
                 ))}
               </div>
             </motion.div>
+
+            {/* Detective's Notebook — fills the previously-empty bottom-right area
+                with an atmospheric rotating quote (changes daily). */}
+            <DetectivesNotebook />
           </div>
         </div>
       </div>

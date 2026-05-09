@@ -77,6 +77,16 @@ export const api = {
   getSession: (sessionId: string): Promise<GameSession> =>
     apiFetch<GameSession>(`/case/${sessionId}`),
 
+  /**
+   * Tell the backend the player has finished reading the case file and the
+   * timer should start now. Returns the fresh `expiresAt`. Idempotent on the
+   * backend — re-clicks return the existing expiresAt without resetting.
+   */
+  beginTimer: (sessionId: string): Promise<{ sessionId: string; expiresAt: string }> =>
+    apiFetch<{ sessionId: string; expiresAt: string }>(`/case/${sessionId}/begin`, {
+      method: 'POST',
+    }),
+
   interrogate: (
     sessionId: string,
     suspectId: string,
