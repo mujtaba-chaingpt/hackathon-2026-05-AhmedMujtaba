@@ -11,9 +11,9 @@ Each phase has its own document under `phases/` with: **goal → plan → done �
 | 3 | AI integration — Groq service (`llama-3.3-70b-versatile`) + 4 prompt templates | DONE | [phases/PHASE_3_ai_integration.md](phases/PHASE_3_ai_integration.md) |
 | 4 | Core game loop — case, interrogate, hint, verdict services | DONE | [phases/PHASE_4_game_loop.md](phases/PHASE_4_game_loop.md) |
 | 5 | Frontend UI — pages, components, noir theme | DONE | [phases/PHASE_5_frontend_ui.md](phases/PHASE_5_frontend_ui.md) |
-| 6 | Integration testing & QA | IN PROGRESS | [phases/PHASE_6_qa.md](phases/PHASE_6_qa.md) |
+| 6 | Integration testing & QA | DONE | [phases/PHASE_6_qa.md](phases/PHASE_6_qa.md) |
 | 7 | Polish, animations, demo prep | DONE | [phases/PHASE_7_polish.md](phases/PHASE_7_polish.md) |
-| 8 | Deployment — Vercel + Railway + Postgres | IN PROGRESS | [phases/PHASE_8_deployment.md](phases/PHASE_8_deployment.md) |
+| 8 | Deployment — Vercel + Railway + Postgres | DONE | [phases/PHASE_8_deployment.md](phases/PHASE_8_deployment.md) |
 
 ## Polish work completed (Phase 7 highlights — May 8)
 

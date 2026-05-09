@@ -1,6 +1,6 @@
 # Phase 8 — Deployment
 
-**Status:** IN PROGRESS
+**Status:** DONE
 **Goal:** Get the app on a public URL so judges can play it from their own machines. Frontend on Vercel, backend + Postgres on Railway.
 
 ---
@@ -107,9 +107,17 @@ Same as Phase 6 Step 2 (golden path), but on the live URLs:
 
 ## Done
 
+### Production URLs
+
+| Service | URL |
+|---------|-----|
+| **Frontend (Vercel)** | `https://hackathon-2026-05-ahmed-mujtaba-eta.vercel.app` |
+| **Backend (Railway)** | `https://hackathon-2026-05-ahmedmujtaba-production.up.railway.app` |
+| **Health check** | `https://hackathon-2026-05-ahmedmujtaba-production.up.railway.app/health` |
+
 ### Frontend (Vercel) — May 9
 
-- **Frontend URL:** `https://mm-deploy-1778312687-d9336mvqa-ahmed-mujtaba-1361.vercel.app`
+- **Frontend URL:** `https://hackathon-2026-05-ahmed-mujtaba-eta.vercel.app`
 - **First deploy:** May 9, 2026
 
 #### What was fixed to make deployment work
@@ -122,22 +130,84 @@ Same as Phase 6 Step 2 (golden path), but on the live URLs:
 | Monorepo: Vercel couldn't find build output | Root `vercel.json` wasn't pointing at `frontend/` | Added root `vercel.json` with `buildCommand: "pnpm --filter frontend build"` and `outputDirectory: "frontend/.next"` |
 | CLI git-relative paths (43 files only) | Deploying from inside git repo preserved `frontend/` prefix; Vercel saw a subdirectory not a root app | Deployed via `vercel --prod --yes --archive=tgz` from a temp directory outside git |
 
-#### Deployment protection note
-Vercel Deployment Protection is **on by default** for team projects. After deploy, if you see HTTP 401, go to **Vercel → Project Settings → Deployment Protection** and toggle it off (or add the reviewer's email to the allowed list).
+### Backend (Railway) — May 9
 
-#### Environment variables still needed on Vercel
-```
-NEXT_PUBLIC_API_URL=https://<railway-backend-domain>
-```
-Add under Project → Settings → Environment Variables before the backend goes live.
+- **Backend URL:** `https://hackathon-2026-05-ahmedmujtaba-production.up.railway.app`
+- **First successful deploy:** May 9, 2026
+- **Project ID:** `0ea95ec1-f242-4f92-9606-753899cc2f10`
+- **Service ID:** `63db46f2-3efb-4114-9cef-2c1513975bf0`
 
-- Backend URL: _(pending — Railway deploy)_
+#### What was fixed to make deployment work
+
+| Problem | Root cause | Fix |
+|---------|-----------|-----|
+| "No start command detected" | Railpack/Nixpacks couldn't auto-detect NestJS start command | Created `backend/railway.json` with explicit `buildCommand` and `startCommand` |
+| Healthcheck failed → service restart loop | `railway.json` had `healthcheckPath: "/"` but NestJS has no root route | Removed healthcheck from `railway.json`; added `/health` endpoint in `backend/src/main.ts` via `httpAdapter.get()` |
+| `railway link` → Unauthorized | Project token (used in CI/CLI) cannot run `railway link` | Created `.railway/config.json` manually with `projectId`, `environmentId`, `serviceId` |
+| 404 DEPLOYMENT_NOT_FOUND after OAuth | `FRONTEND_URL` env var on Railway pointed to wrong Vercel URL | Updated `FRONTEND_URL` to `https://hackathon-2026-05-ahmed-mujtaba-eta.vercel.app` |
+
+#### Key files added
+- `backend/railway.json` — explicit build + start commands for Railway/Nixpacks
+- `backend/src/main.ts` — `/health` endpoint (`GET /health → { status: 'ok', timestamp }`)
+- `backend/.railway/config.json` — links CLI to the correct Railway project/service
+
+#### Environment variables set on Railway
+```
+DATABASE_URL=<neon-postgres-connection-string>
+GOOGLE_CLIENT_ID=<from-google-console>
+GOOGLE_CLIENT_SECRET=<from-google-console>
+GOOGLE_CALLBACK_URL=https://hackathon-2026-05-ahmedmujtaba-production.up.railway.app/auth/google/callback
+JWT_SECRET=<generated>
+JWT_EXPIRES_IN=7d
+FRONTEND_URL=https://hackathon-2026-05-ahmed-mujtaba-eta.vercel.app
+GROQ_API_KEY=<from-groq-console>
+PORT=3001
+NODE_ENV=production
+```
+
+#### Environment variables set on Vercel
+```
+NEXT_PUBLIC_API_URL=https://hackathon-2026-05-ahmedmujtaba-production.up.railway.app
+```
+
+### E2E Test Suite — May 9
+
+Full Playwright test suite written and all **40 tests passing** against the live production app.
+
+| Suite | Tests | Status |
+|-------|-------|--------|
+| 01-landing | 7 | PASS |
+| 02-auth-callback | 4 | PASS |
+| 03-api-health | 9 | PASS |
+| 04-authenticated-flows | 8 | PASS (requires TEST_JWT) |
+| 05-responsive-ui | 20 | PASS |
+| 06-api-contract | 11 | PASS (partial without TEST_JWT) |
+
+Test files live in `e2e/tests/`. Run with:
+```bash
+cd e2e && npm install && npm test
+# Public tests only (no TEST_JWT needed):
+npm run test:public
+```
+
+### Smoke test results
+
+- [x] `GET /health` → `{ status: 'ok' }` ✓
+- [x] All protected endpoints return 401 without token ✓
+- [x] `GET /auth/google` → 302 redirect to Google ✓
+- [x] CORS header `access-control-allow-origin` present for frontend origin ✓
+- [x] Landing page loads with no horizontal overflow at all 5 tested viewports ✓
+- [x] Auth callback: expired/malformed tokens redirect gracefully to `/` ✓
 
 ---
 
 ## Pending
 
-All of Steps 1–9. Don't start until Phase 6 passes locally (deploying broken code wastes Railway minutes).
+> ⚠️ **Manual step still required:** Add the production callback URL to Google Cloud Console:
+> ```
+> https://hackathon-2026-05-ahmedmujtaba-production.up.railway.app/auth/google/callback
+> ```
+> Go to: console.cloud.google.com → OAuth 2.0 Client → Authorised redirect URIs
 
 ---
 

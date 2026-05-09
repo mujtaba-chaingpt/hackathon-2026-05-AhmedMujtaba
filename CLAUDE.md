@@ -2,16 +2,17 @@
 
 ## Stack
 - Language: TypeScript 5.4
-- Frontend framework: Next.js 15 App Router (React 19)
+- Frontend framework: Next.js 16 App Router (React 19)
 - Backend framework: NestJS 10 (Node 22) — lives in `backend/`
 - DB: Neon PostgreSQL (serverless Postgres) via Sequelize ORM + Sequelize migrations
-- Package manager: pnpm 9 (workspaces: `frontend/`, `backend/`)
+- Package manager: npm (standalone per workspace — `frontend/` and `backend/`)
 - Auth: Google OAuth — handled by backend; JWT issued to frontend
 - AI: Groq — model `llama-3.3-70b-versatile` (groq-sdk)
 - UI: Tailwind CSS v3 + shadcn/ui (dark noir theme, CSS vars in `globals.css`)
 - Audio: Web Audio API (procedural SFX + thunder); Web Speech API (TTS narration)
 - Animations: framer-motion (AnimatePresence, spring physics, stagger)
-- Deploy: Vercel (frontend) + Railway / Render (backend)
+- Deploy: Vercel (frontend) + Railway (backend)
+- E2E Tests: Playwright 1.59 (`e2e/` directory, 40 tests across 6 suites)
 
 ## Architecture (1 paragraph)
 Frontend is a Next.js App Router SPA that talks exclusively to the NestJS backend over REST. The backend owns all business logic: Google OAuth callback issues a JWT, four AI-backed endpoints handle case generation, suspect interrogation, hint delivery, and verdict reveal. The full case JSON (including suspect private truths and the murderer's identity) is stored in Postgres per active session and **never sent to the frontend**. Coin state is transactional — all reads and writes go through `CoinService`. The countdown timer lives client-side; on expiry the frontend POSTs to `/verdict` which treats it as a loss. The TTS voice pipeline (Web Speech API) is entirely client-side — no server calls. Stats are tracked in `localStorage` under the key `detective_stats`. The 5 most important files are: `backend/src/case/case.service.ts`, `backend/src/verdict/verdict.service.ts`, `backend/src/ai/ai.service.ts`, `backend/src/coin/coin.service.ts`, `backend/src/db/models/game-session.model.ts`.
@@ -75,18 +76,25 @@ backend/
 - MD hygiene: whenever you write or modify code, update the relevant MD files (CLAUDE.md, PHASES.md, the active phase doc) in the same step. Never leave docs describing a state that no longer matches the code.
 
 ## Build / test / deploy commands
-- Install all: `pnpm install` (from repo root — installs both workspaces)
-- Dev (both): `pnpm dev` (root script runs frontend + backend concurrently)
-- Dev frontend only: `pnpm --filter frontend dev`
-- Dev backend only: `pnpm --filter backend dev`
-- Test: `pnpm --filter backend test`
-- Lint: `pnpm lint`
-- Build frontend: `pnpm --filter frontend build`
-- Build backend: `pnpm --filter backend build`
-- DB migrate: `pnpm --filter backend db:migrate`
-- DB migration create: `pnpm --filter backend db:migration:create --name <name>`
+- Install all: `npm install` in `frontend/` and `npm install` in `backend/` separately
+- Dev (both): `npm run dev` from repo root (runs frontend + backend concurrently via `concurrently`)
+- Dev frontend only: `npm --prefix frontend run dev`
+- Dev backend only: `npm --prefix backend run dev`
+- Test (backend unit): `npm --prefix backend run test`
+- Lint: `npm --prefix backend run lint && npm --prefix frontend run lint`
+- Build frontend: `npm --prefix frontend run build`
+- Build backend: `npm --prefix backend run build`
+- DB migrate: `npm --prefix backend run db:migrate`
+- E2E tests (public): `cd e2e && npm run test:public`
+- E2E tests (all, needs TEST_JWT): `cd e2e && TEST_JWT=<token> npm test`
+- DB migration create: `npm --prefix backend run db:migration:create -- --name <name>`
 - Deploy frontend: `vercel --prod` (from `frontend/`)
-- Deploy backend: push to Railway / Render (auto-deploys from `backend/`)
+- Deploy backend: `cd backend && RAILWAY_TOKEN=<token> railway up --service hackathon-2026-05-AhmedMujtaba --environment production --project 0ea95ec1-f242-4f92-9606-753899cc2f10 --detach`
+
+## Production URLs
+- **Frontend:** `https://hackathon-2026-05-ahmed-mujtaba-eta.vercel.app`
+- **Backend:** `https://hackathon-2026-05-ahmedmujtaba-production.up.railway.app`
+- **Health check:** `https://hackathon-2026-05-ahmedmujtaba-production.up.railway.app/health`
 
 ## Things to NEVER do
 - Never send suspect `private_truth`, `alibi_is_true`, or `will_crack_if` fields to the frontend.
@@ -96,7 +104,7 @@ backend/
 - Never call the Groq SDK outside `backend/src/ai/`.
 - Never add API routes to the Next.js `app/api/` folder — all API logic lives in the NestJS backend.
 - Never commit secrets. Use `.env` in each workspace (gitignored). Production secrets go in Railway / Vercel env vars.
-- Never edit `backend/src/db/migrations/` by hand. Generate via `pnpm --filter backend db:migration:create`.
+- Never edit `backend/src/db/migrations/` by hand. Generate via `npm --prefix backend run db:migration:create`.
 - Never call `window.speechSynthesis` directly from a component — always use `tts.ts` exports.
 - Never start ambient audio while the game page (`/game/[sessionId]`) is active — TTS voices must be clearly audible.
 

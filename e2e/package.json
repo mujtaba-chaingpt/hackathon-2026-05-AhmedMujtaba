@@ -1,0 +1,20 @@
+{
+  "name": "murder-mystery-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:public": "playwright test tests/01-landing.spec.ts tests/02-auth-callback.spec.ts tests/03-api-health.spec.ts tests/05-responsive-ui.spec.ts",
+    "test:api": "playwright test tests/03-api-health.spec.ts tests/06-api-contract.spec.ts",
+    "test:auth": "playwright test tests/04-authenticated-flows.spec.ts tests/06-api-contract.spec.ts",
+    "report": "playwright show-report"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Playwright E2E tests for Murder Mystery Detective",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "typescript": "^5.4.5"
+  }
+}
