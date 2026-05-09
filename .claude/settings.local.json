@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"C:\\\\Users\\\\Funavry\\\\Desktop\\\\hackathon-2026-05-AhmedMujtaba\\\\frontend\\\\src\\\\app\\\\game\\\\[sessionId]\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\Funavry\\\\Desktop\\\\hackathon-2026-05-AhmedMujtaba\\\\frontend\\\\src\\\\app\\\\result\\\\[sessionId]\")",
+      "Bash(pnpm install *)",
+      "PowerShell(Get-Command node, npm, npx 2>&1)",
+      "PowerShell(Get-Content \"$env:TEMP\\\\fe3-out.txt\"; Get-Content \"$env:TEMP\\\\fe3-err.txt\" -ErrorAction SilentlyContinue)",
+      "PowerShell($resp = [System.Net.HttpWebRequest]::Create\\(\"http://localhost:3001/auth/google\"\\); $resp.AllowAutoRedirect = $false; $resp.Method = \"GET\"; $result = $resp.GetResponse\\(\\); Write-Host $result.Headers['Location']; $result.Close\\(\\))",
+      "Bash(pnpm add *)",
+      "Bash(pnpm build *)",
+      "Bash(npx next *)",
+      "Bash(Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue)",
+      "Bash(pnpm --filter backend build)",
+      "Bash(npx tsc *)",
+      "Bash(dir /s /b \"C:\\\\Users\\\\Funavry\\\\Desktop\\\\hackathon-2026-05-AhmedMujtaba\\\\frontend\\\\src\\\\app\\\\*page.tsx\")",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(mkdir -p \"C:/Users/Funavry/Desktop/hackathon-2026-05-AhmedMujtaba/frontend/public/music\" && cp \"C:/Users/Funavry/Downloads/freesound_community-mystery-and-thriller-music-7070.mp3\" \"C:/Users/Funavry/Desktop/hackathon-2026-05-AhmedMujtaba/frontend/public/music/mystery-thriller.mp3\" && ls -la \"C:/Users/Funavry/Desktop/hackathon-2026-05-AhmedMujtaba/frontend/public/music/\")"
+    ]
+  }
+}
